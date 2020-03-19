@@ -25,9 +25,6 @@ public class Clock extends Canvas implements Runnable {
     Graphics2D g2;
 
     int clockD;
-    int sechand;
-    int minhand;
-    int hrhand;
     LocalDateTime now;
     double day;
     double hour;
