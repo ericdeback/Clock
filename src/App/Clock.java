@@ -18,13 +18,30 @@ import java.time.*;
 import java.util.*;
 
 public class Clock extends Canvas implements Runnable {
-    Frame frame = new Frame();
+    Frame frame = new Frame("");
     public int width = 400;
     public int height = 400;
     public PopupMenu pum;
-    //JFrame testFrame;
+    Graphics2D g2;
+
+    int clockD;
+    int sechand;
+    int minhand;
+    int hrhand;
+    LocalDateTime now;
+    double day;
+    double hour;
+    double hour_12;
+    double minute;
+    double second;
+    Secondhand secondhand;
+    Minutehand minutehand;
+    Hourhand hourhand;
 
     public Clock() {
+        secondhand = new Secondhand(this);
+        minutehand = new Minutehand(this);
+        hourhand = new Hourhand(this);
 
         this.setSize(new Dimension(width, height));
         this.setBackground(Color.BLACK);
@@ -102,24 +119,14 @@ public class Clock extends Canvas implements Runnable {
 
     public void run() {
 
-        // initialise world parameters
-
-        // x = 0
-        // y = 0
-        // z = 0
-
-
         while (true) {
 
-            // dynamics go here
             Date date = new Date();
             SimpleDateFormat fmt = new SimpleDateFormat("dd MMM YYYY");
 
             frame.setTitle(String.valueOf(fmt.format(new Date())));
 
             repaint();
-
-            // t = t+dt;
 
             try {
                 Thread.sleep(20);
@@ -130,32 +137,33 @@ public class Clock extends Canvas implements Runnable {
 
     public void paint(Graphics g) {
 
-        LocalDateTime now = LocalDateTime.now();
-        int height = this.getHeight();
-        int width = this.getWidth();
-        int clockD = width<=height ? (int)(0.85*width) : (int)(0.85*height);
-        int sechand = (int)(.9 * clockD/2);
-        int minhand = (int)(.7 * clockD/2);
-        int hourhand = (int)(.4 * clockD/2);
-        double day = (double)now.getDayOfMonth();
-        double hour = (double)now.getHour();
-        double hour_12 = 0d;
-        double minute = (double)now.getMinute();
-        double second = (double)now.getSecond();
-        double nano = (double)now.getNano();
-        double mili = (double)System.currentTimeMillis();
-        Random r = new Random();
+        now = LocalDateTime.now();
+        height = this.getHeight();
+        width = this.getWidth();
+        clockD = width<=height ? (int)(0.85*width) : (int)(0.85*height);
+
+        secondhand.setHandLength((int)(.9 * clockD/2));
+        secondhand.setHandWidth(2);
+        minutehand.setHandLength((int)(.7 * clockD/2));
+        minutehand.setHandWidth(3);
+        hourhand.setHandLength((int)(.4 * clockD/2));
+        hourhand.setHandWidth(5);
+
+        day = (double)now.getDayOfMonth();
+        hour = (double)now.getHour();
+        hour_12 = 0d;
+        minute = (double)now.getMinute();
+        second = (double)now.getSecond();
 
         double x1,y1,x2,y2;
         int length=0;
         int strokewidth=1;
-        x1=y1=x2=y2=0d;
 
         // deal with 24-hour clock
         hour_12 = hour;
         if(hour>12) hour_12 = hour-12d;
 
-        Graphics2D g2 = (Graphics2D)g;
+        g2 = (Graphics2D)g;
 
         //
         // draw clock shape
@@ -216,33 +224,14 @@ public class Clock extends Canvas implements Runnable {
         // second
         int secondStringWidth = g.getFontMetrics().stringWidth(df.format(second));
         theta = Math.toRadians(second * 360d / 60d)+phi; // offset for s
-
         g2.rotate(theta, (int)(width/2)-2, (int)(height/2)-2);
         g.drawString(df.format(second), (int)(width/2-secondStringWidth/2), (int)((height-clockD)/2)-7);
         g2.rotate(-theta, (int)(width/2)-2, (int)(height/2)-2); //reset rotate angle
 
-        // second hand
-        Random rnd = new Random();
-        g2.setStroke(new BasicStroke(2));
-        //g.setColor(new Color(rnd.nextInt(255), rnd.nextInt(255),rnd.nextInt(255)));
-        g.setColor(Color.RED);
-
-        g.drawLine((int)(width/2), (int)(height/2), width/2 + (int)(sechand*Math.sin(6.28d*second/60d)), height/2-(int)(sechand * Math.cos(6.28d*second/60d)));
-
-        // minute hand
-        g2.setStroke(new BasicStroke(3));
-        g.setColor(Color.RED);
-        g.drawLine((int)(width/2), (int)(height/2), width/2 + (int)(minhand*Math.sin(6.28d*minute/60d)), height/2-(int)(minhand * Math.cos(6.28d*minute/60d)));
-
-        // hour
-        g2.setStroke(new BasicStroke(5));
-        g.setColor(Color.RED);
-        g.drawLine(
-                (int)(width/2),
-                (int)(height/2),
-                width/2 + (int)(hourhand * Math.sin(6.28d*hour_12/12d + 6.28d/12d*minute/60d)),
-                height/2- (int)(hourhand * Math.cos(6.28d*hour_12/12d + 6.28d/12d*minute/60d))
-        );
+        // Draw hands
+        secondhand.draw();
+        minutehand.draw();
+        hourhand.draw();
 
         // centre dot
         g.setColor(Color.DARK_GRAY);
