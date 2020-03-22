@@ -34,6 +34,7 @@ public class Clock extends Canvas implements Runnable {
     Secondhand secondhand;
     Minutehand minutehand;
     Hourhand hourhand;
+    MenuItem onTop; // now an instance variable
 
     public Clock() {
         secondhand = new Secondhand(this);
@@ -55,19 +56,16 @@ public class Clock extends Canvas implements Runnable {
         height = this.getHeight();
 
         pum = new PopupMenu();
-        MenuItem onTop = new MenuItem("Set always on top");
+        onTop = new MenuItem("Set always on top");
 
-        onTop.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        onTop.addActionListener(e-> {
                 if (frame.isAlwaysOnTop()) {
-                    frame.setAlwaysOnTop(false);
                     onTop.setLabel("Set always on top");
+                    frame.setAlwaysOnTop(false);
                 } else {
-                    frame.setAlwaysOnTop(true);
                     onTop.setLabel("Unset always on top");
+                    frame.setAlwaysOnTop(true);
                 }
-            }
         });
         pum.add(onTop);
         this.add(pum);
