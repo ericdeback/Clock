@@ -10,19 +10,26 @@ package App;
  */
 
 import Listeners.*;
+import org.apache.commons.io.*;
+import org.json.*;
 
+import javax.imageio.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+import java.nio.charset.*;
 import java.text.*;
 import java.time.*;
+import java.util.Timer;
 import java.util.*;
 
-import static java.lang.Integer.min;
+import static java.lang.Integer.*;
 
 public class Clock extends Canvas implements Runnable {
 
-    String version = "1.0.4";
+    String version = "1.0.5";
 
 
     Frame frame = new Frame("");
@@ -45,14 +52,46 @@ public class Clock extends Canvas implements Runnable {
     Minutehand minutehand;
     Hourhand hourhand;
     String timeZoneStr = "Europe/London";
-
+    String formatString = "dd MMM YYYY";
     MenuItem onTopMenuItem; // now an instance variable
-
     TimeZone currentTimeZone;
+    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q=London,uk&APPID=b2a8bc257fa01634206954930e5a6301";
+    Image weatherImage = null;
 
-    public Clock() {
+    void getWeatherUpdate() {
+        System.out.println("Getting weather update");
+        try {
+            JSONObject json_weather = new JSONObject(IOUtils.toString(new URL(weatherURL), Charset.forName("UTF-8")));
+            JSONArray weatherdetails = (JSONArray) json_weather.get("weather");
+            JSONObject weatherobj = weatherdetails.getJSONObject(0);
+            String weathericoncode = weatherobj.get("icon").toString();
+            weatherImage = ImageIO.read(new URL("http://openweathermap.org/img/wn/"+weathericoncode+"@2x.png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-        //calendar.setTimeZone(TimeZone.getTimeZone("Europe/Copenhagen"));
+    public Clock() throws IOException {
+
+        // then schedule it to run every 10 mins (as per openweathermap requests)
+        Timer timer = new Timer("RefreshWeather");
+        TimerTask task = new TimerTask(){
+
+            @Override
+            public void run() {
+                getWeatherUpdate();
+            }
+        };
+
+        long freq = 10*60*1000L; // 10 delay in ms
+        timer.schedule(task, 0L, freq);
+
+/*
+        for(int i = 0 ; i < json_weather.length(); i++) {
+            list.add(json_weather.getJSONObject().getString("coord"));
+            System.out.println(json_weather.getJSONObject(i).getString("username")); // display usernames
+        }
+*/
 
         secondhand = new Secondhand(this);
         minutehand = new Minutehand(this);
@@ -74,8 +113,32 @@ public class Clock extends Canvas implements Runnable {
 
         popUpMenu = new PopupMenu();
         onTopMenuItem = new MenuItem("Set always on top");
-        timeZoneMenu = new PopupMenu("TimeZone...");
+        timeZoneMenu = new PopupMenu("TimeZone");
+        PopupMenu dateFormat = new PopupMenu("Date format");
         MenuItem aboutMenuItem = new MenuItem("About...");
+
+        MenuItem ddMMYYYY = new MenuItem("dd MM YYYY");
+        MenuItem HHmma = new MenuItem("HH mm a");
+        MenuItem DDDddMMM = new MenuItem("DDD dd MMM");
+        MenuItem HHmmssSSS = new MenuItem("HH mm ss SSS");
+
+        ddMMYYYY.addActionListener(e-> {
+            formatString = "dd MMM YYYY";
+        });
+        HHmma.addActionListener(e-> {
+            formatString = "HH mm a";
+        });
+        DDDddMMM.addActionListener(e->{
+            formatString = "E dd MMM";
+        });
+        HHmmssSSS.addActionListener(e->{
+            formatString = "HH mm ss SSS";
+        });
+
+        dateFormat.add(ddMMYYYY);
+        dateFormat.add(HHmma);
+        dateFormat.add(DDDddMMM);
+        dateFormat.add(HHmmssSSS);
 
         // Hard coded for now
         MenuItem London = new MenuItem("Europe/London");
@@ -114,6 +177,7 @@ public class Clock extends Canvas implements Runnable {
                 }
         });
         popUpMenu.add(onTopMenuItem);
+        popUpMenu.add(dateFormat);
         popUpMenu.add(timeZoneMenu);
         popUpMenu.add(aboutMenuItem);
 
@@ -163,9 +227,8 @@ public class Clock extends Canvas implements Runnable {
 
     public void run() {
 
+
         while (true) {
-
-
 
             frame.setTitle("Timezone: " + timeZoneStr);
 
@@ -182,7 +245,8 @@ public class Clock extends Canvas implements Runnable {
 
         now_zoned = now_zoned.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
         Date date = new Date();
-        SimpleDateFormat fmt = new SimpleDateFormat("dd MMM YYYY");
+        //SimpleDateFormat fmt = new SimpleDateFormat("dd MMM YYYY");
+        SimpleDateFormat fmt = new SimpleDateFormat(formatString);
 
         height = this.getHeight();
         width = this.getWidth();
@@ -222,6 +286,11 @@ public class Clock extends Canvas implements Runnable {
         g2.setStroke(new BasicStroke(1));
         g.setColor(Color.GRAY);
         g.fillOval((int)(width/2-clockD/2)-2, (int)(height/2-clockD/2)-2, clockD+1, clockD+1);
+
+        //
+        if (weatherImage!=null) {
+            g.drawImage(weatherImage, width / 2 - weatherImage.getWidth(this) / 2, (int) (.6f * height), this);
+        }
 
         // draw Calendar
         g.setColor(Color.WHITE);
@@ -315,7 +384,7 @@ public class Clock extends Canvas implements Runnable {
         this.setSize(d);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new Clock();
 
         //double a = 1d;
