@@ -17,6 +17,8 @@ import java.text.*;
 import java.time.*;
 import java.util.*;
 
+import static java.lang.Integer.min;
+
 public class Clock extends Canvas implements Runnable {
     Frame frame = new Frame("");
     public int width = 400;
@@ -197,7 +199,7 @@ public class Clock extends Canvas implements Runnable {
 
         // draw time on the current second position
         g.setColor(Color.WHITE);
-        int fontSize = width/25;
+        int fontSize = min(width/25, height/25);
         g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, fontSize));
         DecimalFormat df = new DecimalFormat("00");
 
