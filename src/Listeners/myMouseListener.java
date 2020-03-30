@@ -15,7 +15,7 @@ public class myMouseListener implements java.awt.event.MouseListener {
     public void mouseClicked(MouseEvent e) {
 
         if (e.getButton()==3 || e.isControlDown()) { //right-click or ctrl-right-click
-            clock.pum.show(clock, e.getX(),e.getY());
+            clock.popUpMenu.show(clock, e.getX(),e.getY());
         }
 
     }

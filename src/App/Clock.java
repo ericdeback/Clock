@@ -11,6 +11,7 @@ package App;
 
 import Listeners.*;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
@@ -20,14 +21,21 @@ import java.util.*;
 import static java.lang.Integer.min;
 
 public class Clock extends Canvas implements Runnable {
+
+    String version = "1.0.4";
+
+
     Frame frame = new Frame("");
     public int width = 400;
     public int height = 400;
-    public PopupMenu pum;
+    public PopupMenu popUpMenu;
+    PopupMenu timeZoneMenu;
+
     Graphics2D g2;
 
     int clockD;
-    LocalDateTime now;
+    ZonedDateTime now_zoned;
+
     double day;
     double hour;
     double hour_12;
@@ -36,9 +44,16 @@ public class Clock extends Canvas implements Runnable {
     Secondhand secondhand;
     Minutehand minutehand;
     Hourhand hourhand;
-    MenuItem onTop; // now an instance variable
+    String timeZoneStr = "Europe/London";
+
+    MenuItem onTopMenuItem; // now an instance variable
+
+    TimeZone currentTimeZone;
 
     public Clock() {
+
+        //calendar.setTimeZone(TimeZone.getTimeZone("Europe/Copenhagen"));
+
         secondhand = new Secondhand(this);
         minutehand = new Minutehand(this);
         hourhand = new Hourhand(this);
@@ -57,20 +72,52 @@ public class Clock extends Canvas implements Runnable {
         width = this.getWidth();
         height = this.getHeight();
 
-        pum = new PopupMenu();
-        onTop = new MenuItem("Set always on top");
+        popUpMenu = new PopupMenu();
+        onTopMenuItem = new MenuItem("Set always on top");
+        timeZoneMenu = new PopupMenu("TimeZone...");
+        MenuItem aboutMenuItem = new MenuItem("About...");
 
-        onTop.addActionListener(e-> {
+        // Hard coded for now
+        MenuItem London = new MenuItem("Europe/London");
+        MenuItem Rome = new MenuItem("Europe/Rome");
+        MenuItem EST = new MenuItem("EST");
+        MenuItem Sydney = new MenuItem("Australia/Sydney");
+
+        London.addActionListener(e-> {
+            timeZoneStr = "Europe/London";
+        });
+        Rome.addActionListener(e-> {
+            timeZoneStr = "Europe/Rome";
+        });
+        EST.addActionListener(e-> {
+            timeZoneStr = "EST";
+        });
+        Sydney.addActionListener(e-> {
+            timeZoneStr = "Australia/Sydney";
+        });
+        aboutMenuItem.addActionListener(e-> {
+            JOptionPane.showMessageDialog(this, "Version " + version);
+        });
+
+        timeZoneMenu.add(EST);
+        timeZoneMenu.add(London);
+        timeZoneMenu.add(Rome);
+        timeZoneMenu.add(Sydney);
+
+        onTopMenuItem.addActionListener(e-> {
                 if (frame.isAlwaysOnTop()) {
-                    onTop.setLabel("Set always on top");
+                    onTopMenuItem.setLabel("Set always on top");
                     frame.setAlwaysOnTop(false);
                 } else {
-                    onTop.setLabel("Unset always on top");
+                    onTopMenuItem.setLabel("Unset always on top");
                     frame.setAlwaysOnTop(true);
                 }
         });
-        pum.add(onTop);
-        this.add(pum);
+        popUpMenu.add(onTopMenuItem);
+        popUpMenu.add(timeZoneMenu);
+        popUpMenu.add(aboutMenuItem);
+
+        this.add(popUpMenu);
 
         frame.addWindowListener(new WindowListener() {
             @Override
@@ -118,10 +165,9 @@ public class Clock extends Canvas implements Runnable {
 
         while (true) {
 
-            Date date = new Date();
-            SimpleDateFormat fmt = new SimpleDateFormat("dd MMM YYYY");
 
-            frame.setTitle(String.valueOf(fmt.format(new Date())));
+
+            frame.setTitle("Timezone: " + timeZoneStr);
 
             repaint();
 
@@ -134,7 +180,10 @@ public class Clock extends Canvas implements Runnable {
 
     public void paint(Graphics g) {
 
-        now = LocalDateTime.now();
+        now_zoned = now_zoned.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
+        Date date = new Date();
+        SimpleDateFormat fmt = new SimpleDateFormat("dd MMM YYYY");
+
         height = this.getHeight();
         width = this.getWidth();
         clockD = width<=height ? (int)(0.85*width) : (int)(0.85*height);
@@ -146,11 +195,12 @@ public class Clock extends Canvas implements Runnable {
         hourhand.setHandLength((int)(.4 * clockD/2));
         hourhand.setHandWidth(5);
 
-        day = (double)now.getDayOfMonth();
-        hour = (double)now.getHour();
+
+        day = (double)now_zoned.getDayOfMonth();
+        hour = (double)now_zoned.getHour();
         hour_12 = 0d;
-        minute = (double)now.getMinute();
-        second = (double)now.getSecond();
+        minute = (double)now_zoned.getMinute();
+        second = (double)now_zoned.getSecond();
 
         double x1,y1,x2,y2;
         int length=0;
@@ -172,6 +222,13 @@ public class Clock extends Canvas implements Runnable {
         g2.setStroke(new BasicStroke(1));
         g.setColor(Color.GRAY);
         g.fillOval((int)(width/2-clockD/2)-2, (int)(height/2-clockD/2)-2, clockD+1, clockD+1);
+
+        // draw Calendar
+        g.setColor(Color.WHITE);
+        int fontSize = min(width/10, height/10);
+        g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, fontSize));
+        g2.drawString(String.valueOf(fmt.format(new Date())), .5f*width-.5f*g.getFontMetrics().stringWidth(String.valueOf(fmt.format(new Date()))), .4f*height);
+
 
         // minute interval markers
         for (double phi=0; phi<60d; phi++) {
@@ -199,7 +256,7 @@ public class Clock extends Canvas implements Runnable {
 
         // draw time on the current second position
         g.setColor(Color.WHITE);
-        int fontSize = min(width/25, height/25);
+        fontSize = min(width/25, height/25);
         g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, fontSize));
         DecimalFormat df = new DecimalFormat("00");
 
