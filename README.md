@@ -10,11 +10,11 @@ Ctrl-click or right-click exposes a context menu:
     
     Always on-top switch;
     
-    DateFormat;
+    DateFormat: dd MM YYYY, HH mm a, DDD dd MMM, HH mm ss SSS
     
-    TimeZone (EST, GMT, CET & Australia/Sydney);
+    TimeZone: EST, GMT, CET & Australia/Sydney
   
-  About;
+    About;
 
 ### Weather 
 
