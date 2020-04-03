@@ -11,47 +11,26 @@ package App;
 
 //TODO
 // 1. Fix: when converting to new timezone, the date did not update
+// 2. convert timezones to enums
 
-import org.apache.commons.io.*;
 import org.json.*;
 
-import javax.imageio.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-import java.net.*;
-import java.nio.charset.*;
 import java.text.*;
 import java.time.*;
+import java.time.format.*;
 import java.util.Timer;
 import java.util.*;
 
 import static java.lang.Integer.*;
 
-enum Heading {
-    N1 (360f-22.5f, 0),
-    N2 (0f, 22.5f),
-    NE(22.5f, 67.5f),
-    E(67.5f, 67+45f),
-    SE(22.5f+90f, 67.5f+90f),
-    S(67.5f+90f, 67+45f+90f),
-    SW (22.5f+180f, 67.5f+180f),
-    W(67.5f+180f, 67+45f+180f),
-    NW(22.5f+270f, 67.5f+270f);
-
-    public final float lower;
-    public final float upper;
-
-    private Heading(float lower, float upper) {
-        this.lower = lower;
-        this.upper = upper;
-    }
-}
 
 public class Clock extends JPanel implements Runnable {
 
-    String version = "1.0.5";
+    String version = "1.0.6";
 
     Graphics2D g2; // used in HourHand/MinuteHand/SecondHand classes
 
@@ -74,9 +53,9 @@ public class Clock extends JPanel implements Runnable {
     JLabel tempLabel          = new JLabel();
     JLabel windtitleLabel     = new JLabel("Wind");
     JLabel windspeedLabel     = new JLabel();
-    // Time variables
 
-    ZonedDateTime now_zoned;
+    // Time variables
+    ZonedDateTime zonedDateTime;
     String timeZoneStr = "Europe/London";
     double day;
     double hour;
@@ -89,9 +68,7 @@ public class Clock extends JPanel implements Runnable {
     String formatString = "dd MMM YYYY";
 
     // Weather vars
-    final private String APPID = "b2a8bc257fa01634206954930e5a6301"; // provided by OpenWeatherMap
-    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q={LOCATION}&APPID="+APPID+"&units=metric";
-    Image weatherImage = null;
+    Image weatherImage;
     String weatherDescription = "";
     String temp;
     String feels_like;
@@ -111,7 +88,11 @@ public class Clock extends JPanel implements Runnable {
     int headingFontSize = 20;
     ImageIcon tick = new ImageIcon("resources/tick2.png");
 
+    Model model;
+
     public Clock() throws IOException {
+
+        model = new Model();
 
         // Schedule a weather update every 10 mins (as per openweathermap requests)
         Timer timer = new Timer("RefreshWeather");
@@ -122,7 +103,7 @@ public class Clock extends JPanel implements Runnable {
             }
         };
 
-        long freq = 10*60*1000L; // 10min intervals tp poll openweathermap
+        long freq = model.getFreq(); // 10min intervals tp poll openweathermap
         timer.schedule(task, 0L, freq);
 
         secondhand = new Secondhand(this);
@@ -144,32 +125,32 @@ public class Clock extends JPanel implements Runnable {
         mainPopUpMenu = new JPopupMenu();
 
         JMenuItem weatherMenuItem = new JMenuItem("Weather...");
-        onTopMenuItem = new JMenuItem("Always on top");
+        onTopMenuItem             = new JMenuItem("Stay on top");
         onTopMenuItem.setIcon(tick);
-        JMenu timeZoneMenu = new JMenu("TimeZone");
-        JMenu dateFormatPopupMenu = new JMenu("Date format");
-        JMenuItem aboutMenuItem = new JMenuItem("About...");
+        JMenu timeZoneMenu        = new JMenu("TimeZone");
+        JMenu dateFormatPopupMenu = new JMenu("Date/Time format");
+        JMenuItem aboutMenuItem   = new JMenuItem("About...");
 
-        JMenuItem ddMMYYYY = new JMenuItem("dd MM YYYY");
-        JMenuItem HHmma = new JMenuItem("HH mm a");
-        JMenuItem DDDddMMM = new JMenuItem("DDD dd MMM");
-        JMenuItem HHmmssSSS = new JMenuItem("HH mm ss SSS");
+        JMenuItem ddMMYYYY        = new JMenuItem("dd MM YYYY");
+        JMenuItem HHmma           = new JMenuItem("HH mm a");
+        JMenuItem DDDddMMM        = new JMenuItem("DDD dd MMM");
+        JMenuItem HHmmssSSS       = new JMenuItem("HH mm ss SSS");
 
         ddMMYYYY.addActionListener(e-> {
             formatString = "dd MMM YYYY";
-            delta = 1000;
+            delta = model.getDelta(formatString);
         });
         HHmma.addActionListener(e-> {
             formatString = "HH mm a";
-            delta = 1000;
+            delta = model.getDelta(formatString);
         });
         DDDddMMM.addActionListener(e->{
             formatString = "E dd MMM";
-            delta = 1000;
+            delta = model.getDelta(formatString);
         });
         HHmmssSSS.addActionListener(e->{
             formatString = "HH mm ss SSS";
-            delta = 10;
+            delta = model.getDelta(formatString);; // required for SSS update
         });
 
         dateFormatPopupMenu.add(ddMMYYYY);
@@ -177,10 +158,10 @@ public class Clock extends JPanel implements Runnable {
         dateFormatPopupMenu.add(DDDddMMM);
         dateFormatPopupMenu.add(HHmmssSSS);
 
-        // Hard coded for now
+        // Hard coded list for now
         JMenuItem London = new JMenuItem("Europe/London");
-        JMenuItem Rome = new JMenuItem("Europe/Rome");
-        JMenuItem EST = new JMenuItem("EST");
+        JMenuItem Rome   = new JMenuItem("Europe/Rome");
+        JMenuItem EST    = new JMenuItem("EST");
         JMenuItem Sydney = new JMenuItem("Australia/Sydney");
 
         London.addActionListener(e-> {
@@ -224,19 +205,13 @@ public class Clock extends JPanel implements Runnable {
             }
         });
 
+        // toggle on top flag
         onTopMenuItem.addActionListener(e-> {
             if (appFrame.isAlwaysOnTop()) {
-
-                // unset flag
-                //onTopMenuItem.setText("Always on top");
                 onTopMenuItem.setIcon(null);
                 appFrame.setAlwaysOnTop(false);
                 sideFrame.setAlwaysOnTop(false);
             } else {
-
-                // set flag
-
-                //onTopMenuItem.setText("Always on top");
                 onTopMenuItem.setIcon(tick);
                 appFrame.setAlwaysOnTop(true);
                 sideFrame.setAlwaysOnTop(true);
@@ -252,12 +227,12 @@ public class Clock extends JPanel implements Runnable {
 
         // Weather side panel display labels
         JLabel WeatherTitleLabel = new JLabel("Weather");
-        JLabel tempLbl = new JLabel("Temp:");
-        JLabel feelslikeLbl = new JLabel("Feels like:");
-        JLabel tempminLbl = new JLabel("Min:");
-        JLabel tempmaxLbl = new JLabel("Max:");
-        JLabel windspeedLbl = new JLabel("Speed:");
-        JLabel winddirectionLbl = new JLabel("Direction:");
+        JLabel tempLbl           = new JLabel("Temp:");
+        JLabel feelslikeLbl      = new JLabel("Feels like:");
+        JLabel tempminLbl        = new JLabel("Min:");
+        JLabel tempmaxLbl        = new JLabel("Max:");
+        JLabel windspeedLbl      = new JLabel("Speed:");
+        JLabel winddirectionLbl  = new JLabel("Direction:");
 
         {
             {
@@ -414,7 +389,7 @@ public class Clock extends JPanel implements Runnable {
                 sideFrame.toFront();
                 Point p = appFrame.getLocation();
 
-                int x_position =0;
+                int x_position = 0;
 
                 if (appFrame.getX() + appFrame.getWidth() + sideFrameWidth < Toolkit.getDefaultToolkit().getScreenSize().width) {
                     x_position = appFrame.getX() + appFrame.getWidth();
@@ -445,78 +420,63 @@ public class Clock extends JPanel implements Runnable {
 
     void getWeatherUpdate() {
 
-        System.out.println("Getting weather update");
+        //System.out.println("Getting weather update");
+
         try {
 
             //switch ()
-            weatherURL = weatherURL.replace("{LOCATION}", "London,uk");
+            String location = "London,uk";
 
-            JSONObject json_weather = new JSONObject(IOUtils.toString(new URL(weatherURL), Charset.forName("UTF-8")));
-            JSONArray weatherdetails = (JSONArray) json_weather.get("weather");
-            JSONObject weatherobj = weatherdetails.getJSONObject(0);
-            String weathericoncode = weatherobj.get("icon").toString();
+            JSONObject json_weather      = model.getJson_weather(location);
+            JSONArray  weatherdetails    = model.getWeatherdetails();
+            JSONObject weatherobj        = model.getWeatherobj();
+            String     weathericoncode   = model.getWeathericoncode();
 
 /*            //for testing
             String[] weathercodes ={"01d", "02d", "03d"};
             Random r = new Random();
             weathericoncode = weathercodes[r.nextInt(3)];*/
 
-            weatherImage = ImageIO.read(new URL("http://openweathermap.org/img/wn/"+weathericoncode+"@2x.png"));
+            weatherImage                = model.getWeatherImage();
 
-            weatherDescription = weatherobj.get("description").toString();
+            weatherDescription = model.getWeatherDescription();
             weatherIconLabel.setIcon(new ImageIcon(weatherImage));
             weatherIconLabel.setToolTipText(weatherDescription);
 
-            JSONObject tempobj = (JSONObject)json_weather.get("main");
-            temp        = tempobj.get("temp").toString();
-            feels_like  = tempobj.get("feels_like").toString();
-            temp_min    = tempobj.get("temp_min").toString();
-            temp_max    = tempobj.get("temp_max").toString();
+            // extract temperature data
+            JSONObject tempobj = model.getMainobj();
+            temp        = model.getTemp();
+            feels_like  = model.getFeels_like();
+            temp_min    = model.getTemp_min();
+            temp_max    = model.getTemp_max();
 
             tempLabel.setText(temp+"C");
             feelslikeLabel.setText(feels_like+"C");
             tempminLabel.setText(temp_min+"C");
             tempmaxLabel.setText(temp_max+"C");
 
-            tempobj = (JSONObject)json_weather.get("wind");
+            // extract wind data
+            JSONObject windobj = model.getWindobj();
             try {
-                wind_speed = tempobj.get("speed").toString()+ "m/s";
+                wind_speed = windobj.get("speed").toString()+ "m/s";
             } catch (Exception ex) {
                 wind_speed = "N/A";
             }
             try {
-                wind_direction = getCompassHeading(tempobj.get("deg").toString());
-
-
+                wind_direction = model.getCompassHeading(tempobj.get("deg").toString());
             } catch (Exception ex) {
                 wind_direction = "N/A";
             }
 
-
-
-            windspeedLabel.setText(wind_speed );
+            windspeedLabel.setText(wind_speed);
             winddirectionLabel.setText(wind_direction);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
 
-
-    String getCompassHeading(String wind_direction) {
-
-        String compassHeading = "";
-        for (Heading heading: Heading.values()) {
-            if (Integer.parseInt(wind_direction) >= heading.lower && Integer.parseInt(wind_direction) < heading.upper) {
-                compassHeading = heading.name();
-            }
-        }
-        if(compassHeading.equals("N1") || compassHeading.equals("N2")) compassHeading = "N";
-
-        return compassHeading;
-    }
 
     public void run() {
 
@@ -542,9 +502,10 @@ public class Clock extends JPanel implements Runnable {
         g2 = (Graphics2D)g;
 
         // Calculate Date & Time
-        now_zoned = now_zoned.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
+        zonedDateTime = zonedDateTime.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
         Date date = new Date();
-        SimpleDateFormat fmt = new SimpleDateFormat(formatString);
+        //SimpleDateFormat fmt = new SimpleDateFormat(formatString);
+        DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern(formatString);
 
         height = this.getHeight();
         width = this.getWidth();
@@ -557,11 +518,11 @@ public class Clock extends JPanel implements Runnable {
         hourhand.setHandLength((int)(.4 * clockDiameter /2));
         hourhand.setHandWidth(5);
 
-        day = (double)now_zoned.getDayOfMonth();
-        hour = (double)now_zoned.getHour();
+        day = (double) zonedDateTime.getDayOfMonth();
+        hour = (double) zonedDateTime.getHour();
         hour_12 = 0d;
-        minute = (double)now_zoned.getMinute();
-        second = (double)now_zoned.getSecond();
+        minute = (double) zonedDateTime.getMinute();
+        second = (double) zonedDateTime.getSecond();
 
         double x1,y1,x2,y2;
         int length=0;
@@ -586,11 +547,12 @@ public class Clock extends JPanel implements Runnable {
             //g.drawImage(weatherImage, width / 2 - weatherImage.getWidth(this) / 2, (int) (.6f * height), this);
         }
 
-        // draw Calendar
+        // draw Date/Time
         g.setColor(Color.WHITE);
         int fontSize = min(width/10, height/10);
         g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, fontSize));
-        g2.drawString(String.valueOf(fmt.format(new Date())), .5f*width-.5f*g.getFontMetrics().stringWidth(String.valueOf(fmt.format(new Date()))), .4f*height);
+        //g2.drawString(String.valueOf(fmt.format(new Date())), .5f*width-.5f*g.getFontMetrics().stringWidth(String.valueOf(fmt.format(new Date()))), .4f*height);
+        g2.drawString(String.valueOf(zonedDateTime.format(fmt2)), .5f*width-.5f*g.getFontMetrics().stringWidth(String.valueOf(zonedDateTime.format(fmt2))), .4f*height);
 
 
         // minute interval markers
@@ -655,27 +617,6 @@ public class Clock extends JPanel implements Runnable {
         g.fillOval((int)(width/2)-3, (int)(height/2)-3,6,6);
 
 
-    }
-
-/*    public void update(Graphics g) {
-        Graphics offgc;
-        Image offscreen = null;
-
-        // create the offscreen buffer and associated Graphics
-        offscreen = createImage(frame.getWidth(), frame.getHeight());
-        offgc = offscreen.getGraphics();
-        // clear the exposed area
-        offgc.setColor(getBackground());
-        offgc.fillRect(0, 0, frame.getWidth(), frame.getHeight());
-        offgc.setColor(getForeground());
-        // do normal redraw
-        paint(offgc);
-        // transfer offscreen to window
-        g.drawImage(offscreen, 0, 0, this);
-    }*/
-
-    void setmySize(Dimension d) {
-        this.setSize(d);
     }
 
     public static void main(String... args) throws IOException {
