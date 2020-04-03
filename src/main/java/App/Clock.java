@@ -10,9 +10,7 @@ package App;
  */
 
 //TODO
-// 1. convert to GUI objects to Swing
-// 2. Fix: when converting to new timezone, the date did not update
-// 3. add tooltiptest to weathericon with description from API
+// 1. Fix: when converting to new timezone, the date did not update
 
 import org.apache.commons.io.*;
 import org.json.*;
@@ -55,17 +53,28 @@ public class Clock extends JPanel implements Runnable {
 
     String version = "1.0.5";
 
-    Graphics2D g2;
+    Graphics2D g2; // used in HourHand/MinuteHand/SecondHand classes
 
-    JFrame appFrame = new JFrame("");
-    JFrame sideFrame;
+    // Frame
+    JFrame appFrame  = new JFrame();
+    JFrame sideFrame = new JFrame();
 
-    public int width = 400;
-    public int height = 400;
-    int clockD;
+    int width = 400;
+    int height = 400;
+    int sideFrameWidth = 140;
 
-    public JPopupMenu mainPopUpMenu;
+    // GUI objects
+    private  JPopupMenu mainPopUpMenu;
     JMenuItem onTopMenuItem; // now an instance variable
+    JLabel weatherIconLabel   = new JLabel();
+    JLabel winddirectionLabel = new JLabel();
+    JLabel tempmaxLabel       = new JLabel();
+    JLabel tempminLabel       = new JLabel();
+    JLabel feelslikeLabel     = new JLabel();
+    JLabel tempLabel          = new JLabel();
+    JLabel windtitleLabel     = new JLabel("Wind");
+    JLabel windspeedLabel     = new JLabel();
+    // Time variables
 
     ZonedDateTime now_zoned;
     String timeZoneStr = "Europe/London";
@@ -79,19 +88,11 @@ public class Clock extends JPanel implements Runnable {
     Hourhand hourhand;
     String formatString = "dd MMM YYYY";
 
-    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q={LOCATION}&APPID=b2a8bc257fa01634206954930e5a6301&units=metric";
+    // Weather vars
+    final private String APPID = "b2a8bc257fa01634206954930e5a6301"; // provided by OpenWeatherMap
+    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q={LOCATION}&APPID="+APPID+"&units=metric";
     Image weatherImage = null;
     String weatherDescription = "";
-
-    JLabel weatherIconLabel = new JLabel();
-    JLabel winddirectionLabel = new JLabel();
-    JLabel tempmaxLabel = new JLabel();
-    JLabel tempminLabel = new JLabel();
-    JLabel feelslikeLabel = new JLabel();
-    JLabel tempLabel      = new JLabel();
-    JLabel windtitleLabel = new JLabel("Wind");
-    JLabel windspeedLabel = new JLabel();
-
     String temp;
     String feels_like;
     String temp_min;
@@ -99,9 +100,20 @@ public class Clock extends JPanel implements Runnable {
     String wind_speed;
     String wind_direction;
 
+    // External API refresh interval
+    int delta = 1000; // update interval [ms]
+
+    // GUI config
+    int clockDiameter;
+    int LabelFontSize = 10;
+    int infoFontSize = 15;
+    int subHeadingFontSize = 18;
+    int headingFontSize = 20;
+    ImageIcon tick = new ImageIcon("resources/tick2.png");
+
     public Clock() throws IOException {
 
-        // then schedule it to run every 10 mins (as per openweathermap requests)
+        // Schedule a weather update every 10 mins (as per openweathermap requests)
         Timer timer = new Timer("RefreshWeather");
         TimerTask task = new TimerTask(){
             @Override
@@ -110,7 +122,7 @@ public class Clock extends JPanel implements Runnable {
             }
         };
 
-        long freq = 10*60*1000L; // 10min intervals
+        long freq = 10*60*1000L; // 10min intervals tp poll openweathermap
         timer.schedule(task, 0L, freq);
 
         secondhand = new Secondhand(this);
@@ -132,7 +144,8 @@ public class Clock extends JPanel implements Runnable {
         mainPopUpMenu = new JPopupMenu();
 
         JMenuItem weatherMenuItem = new JMenuItem("Weather...");
-        onTopMenuItem = new JMenuItem("Set always on top");
+        onTopMenuItem = new JMenuItem("Always on top");
+        onTopMenuItem.setIcon(tick);
         JMenu timeZoneMenu = new JMenu("TimeZone");
         JMenu dateFormatPopupMenu = new JMenu("Date format");
         JMenuItem aboutMenuItem = new JMenuItem("About...");
@@ -142,10 +155,22 @@ public class Clock extends JPanel implements Runnable {
         JMenuItem DDDddMMM = new JMenuItem("DDD dd MMM");
         JMenuItem HHmmssSSS = new JMenuItem("HH mm ss SSS");
 
-        ddMMYYYY.addActionListener(e-> {formatString = "dd MMM YYYY";});
-        HHmma.addActionListener(e-> {formatString = "HH mm a";});
-        DDDddMMM.addActionListener(e->{formatString = "E dd MMM";});
-        HHmmssSSS.addActionListener(e->{formatString = "HH mm ss SSS";});
+        ddMMYYYY.addActionListener(e-> {
+            formatString = "dd MMM YYYY";
+            delta = 1000;
+        });
+        HHmma.addActionListener(e-> {
+            formatString = "HH mm a";
+            delta = 1000;
+        });
+        DDDddMMM.addActionListener(e->{
+            formatString = "E dd MMM";
+            delta = 1000;
+        });
+        HHmmssSSS.addActionListener(e->{
+            formatString = "HH mm ss SSS";
+            delta = 10;
+        });
 
         dateFormatPopupMenu.add(ddMMYYYY);
         dateFormatPopupMenu.add(HHmma);
@@ -183,19 +208,39 @@ public class Clock extends JPanel implements Runnable {
             if(sideFrame.isVisible()) {
                 sideFrame.setVisible(false);
             } else {
+                int x_position =0;
+
+                if (appFrame.getX() + appFrame.getWidth() + sideFrameWidth < Toolkit.getDefaultToolkit().getScreenSize().width) {
+                    x_position = appFrame.getX() + appFrame.getWidth();
+                } else {
+                    x_position = appFrame.getX() - sideFrameWidth;
+                }
+                if (sideFrame.getX() < 0) {
+                    x_position = appFrame.getX() + appFrame.getWidth();
+                }
+
+                sideFrame.setLocation(new Point(x_position, appFrame.getY() + (appFrame.getHeight() - appFrame.getContentPane().getHeight())));
                 sideFrame.setVisible(true);
             }
         });
+
         onTopMenuItem.addActionListener(e-> {
             if (appFrame.isAlwaysOnTop()) {
-                    onTopMenuItem.setText("Set always on top");
-                    appFrame.setAlwaysOnTop(false);
-                    sideFrame.setAlwaysOnTop(false);
-                } else {
-                    onTopMenuItem.setText("Unset always on top");
-                    appFrame.setAlwaysOnTop(true);
-                    sideFrame.setAlwaysOnTop(true);
-                }
+
+                // unset flag
+                //onTopMenuItem.setText("Always on top");
+                onTopMenuItem.setIcon(null);
+                appFrame.setAlwaysOnTop(false);
+                sideFrame.setAlwaysOnTop(false);
+            } else {
+
+                // set flag
+
+                //onTopMenuItem.setText("Always on top");
+                onTopMenuItem.setIcon(tick);
+                appFrame.setAlwaysOnTop(true);
+                sideFrame.setAlwaysOnTop(true);
+            }
         });
         mainPopUpMenu.add(weatherMenuItem);
         mainPopUpMenu.add(onTopMenuItem);
@@ -213,11 +258,6 @@ public class Clock extends JPanel implements Runnable {
         JLabel tempmaxLbl = new JLabel("Max:");
         JLabel windspeedLbl = new JLabel("Speed:");
         JLabel winddirectionLbl = new JLabel("Direction:");
-
-        int LabelFontSize = 10;
-        int infoFontSize = 15;
-        int subHeadingFontSize = 18;
-        int headingFontSize = 20;
 
         {
             {
@@ -270,7 +310,7 @@ public class Clock extends JPanel implements Runnable {
             }
         }
 
-        sideFrame = new JFrame();
+
         sideFrame.setLayout(new GridBagLayout());
         sideFrame.setUndecorated(true);
 
@@ -334,7 +374,7 @@ public class Clock extends JPanel implements Runnable {
         }
 
         sideFrame.setLocation(appFrame.getX()+ appFrame.getWidth(), appFrame.getY()+ (appFrame.getHeight()- this.getHeight()));
-        sideFrame.setPreferredSize(new Dimension(140, height));
+        sideFrame.setPreferredSize(new Dimension(sideFrameWidth, height));
         sideFrame.pack();
         sideFrame.setVisible(false);
 
@@ -373,7 +413,18 @@ public class Clock extends JPanel implements Runnable {
             public void componentMoved(ComponentEvent e) {
                 sideFrame.toFront();
                 Point p = appFrame.getLocation();
-                sideFrame.setLocation(new Point(appFrame.getX()+ appFrame.getWidth(), appFrame.getY()+ (appFrame.getHeight()- appFrame.getContentPane().getHeight())));
+
+                int x_position =0;
+
+                if (appFrame.getX() + appFrame.getWidth() + sideFrameWidth < Toolkit.getDefaultToolkit().getScreenSize().width) {
+                    x_position = appFrame.getX() + appFrame.getWidth();
+                } else {
+                    x_position = appFrame.getX() - sideFrameWidth;
+                }
+                if (sideFrame.getX() < 0) {
+                    x_position = appFrame.getX() + appFrame.getWidth();
+                }
+                sideFrame.setLocation(new Point(x_position, appFrame.getY()+ (appFrame.getHeight()- appFrame.getContentPane().getHeight())));
             }
 
             @Override
@@ -478,7 +529,7 @@ public class Clock extends JPanel implements Runnable {
             repaint();
 
             try {
-                Thread.sleep(1000);
+                Thread.sleep(delta);
             } catch (InterruptedException e) {
             }
         }
@@ -490,19 +541,20 @@ public class Clock extends JPanel implements Runnable {
 
         g2 = (Graphics2D)g;
 
+        // Calculate Date & Time
         now_zoned = now_zoned.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
         Date date = new Date();
         SimpleDateFormat fmt = new SimpleDateFormat(formatString);
 
         height = this.getHeight();
         width = this.getWidth();
-        clockD = width<=height ? (int)(0.85*width) : (int)(0.85*height);
+        clockDiameter = width<=height ? (int)(0.85*width) : (int)(0.85*height);
 
-        secondhand.setHandLength((int)(.9 * clockD/2));
+        secondhand.setHandLength((int)(.9 * clockDiameter /2));
         secondhand.setHandWidth(2);
-        minutehand.setHandLength((int)(.7 * clockD/2));
+        minutehand.setHandLength((int)(.7 * clockDiameter /2));
         minutehand.setHandWidth(3);
-        hourhand.setHandLength((int)(.4 * clockD/2));
+        hourhand.setHandLength((int)(.4 * clockDiameter /2));
         hourhand.setHandWidth(5);
 
         day = (double)now_zoned.getDayOfMonth();
@@ -528,7 +580,7 @@ public class Clock extends JPanel implements Runnable {
         // clock face
         g2.setStroke(new BasicStroke(1));
         g.setColor(Color.GRAY);
-        g.fillOval((int)(width/2-clockD/2)-2, (int)(height/2-clockD/2)-2, clockD+1, clockD+1);
+        g.fillOval((int)(width/2- clockDiameter /2)-2, (int)(height/2- clockDiameter /2)-2, clockDiameter +1, clockDiameter +1);
 
         if (weatherImage!=null) {
             //g.drawImage(weatherImage, width / 2 - weatherImage.getWidth(this) / 2, (int) (.6f * height), this);
@@ -550,10 +602,10 @@ public class Clock extends JPanel implements Runnable {
                 strokewidth=2;
             }
 
-            x1=width / 2 + clockD / 2 * Math.sin(6.28d * phi / 60d);
-            y1=height / 2 - clockD / 2 * Math.cos(6.28d * phi / 60d);
-            x2=width / 2 + (clockD / 2 - length) * Math.sin(6.28d * phi / 60d);
-            y2=height / 2 - (clockD / 2 - length) * Math.cos(6.28d * phi / 60d);
+            x1=width / 2 + clockDiameter / 2 * Math.sin(6.28d * phi / 60d);
+            y1=height / 2 - clockDiameter / 2 * Math.cos(6.28d * phi / 60d);
+            x2=width / 2 + (clockDiameter / 2 - length) * Math.sin(6.28d * phi / 60d);
+            y2=height / 2 - (clockDiameter / 2 - length) * Math.cos(6.28d * phi / 60d);
 
             if ((phi != second)) {
                 g.setColor(Color.WHITE);
@@ -573,24 +625,24 @@ public class Clock extends JPanel implements Runnable {
 
         // hour
         int hourStringWidth = g.getFontMetrics().stringWidth(df.format(hour)+":");
-        double phi = Math.asin(2d*(double)hourStringWidth/clockD); // angle for h, m & s calcs
+        double phi = Math.asin(2d*(double)hourStringWidth/ clockDiameter); // angle for h, m & s calcs
 
         double theta = Math.toRadians((second) * 360d / 60d) -phi; // offset for h
         g2.rotate(theta, (int)(width/2)-2, (int)(height/2)-2);
-        g.drawString(df.format(hour)+":", (int)(width/2-hourStringWidth/2), (int)((height-clockD)/2)-7);
+        g.drawString(df.format(hour)+":", (int)(width/2-hourStringWidth/2), (int)((height- clockDiameter)/2)-7);
         g2.rotate(-theta, (int)(width/2)-2, (int)(height/2)-2); //reset rotate angle
 
         // minute
         int minuteStringWidth = g.getFontMetrics().stringWidth(df.format(minute)+":");
         g2.rotate(Math.toRadians(second*360d/60d), (int)(width/2)-2, (int)(height/2)-2);
-        g.drawString(df.format(minute)+":", (int)(width/2-minuteStringWidth/2), (int)((height-clockD)/2)-7);
+        g.drawString(df.format(minute)+":", (int)(width/2-minuteStringWidth/2), (int)((height- clockDiameter)/2)-7);
         g2.rotate(-Math.toRadians(second*360d/60d), (int)(width/2)-2, (int)(height/2)-2);
 
         // second
         int secondStringWidth = g.getFontMetrics().stringWidth(df.format(second));
         theta = Math.toRadians(second * 360d / 60d)+phi; // offset for s
         g2.rotate(theta, (int)(width/2)-2, (int)(height/2)-2);
-        g.drawString(df.format(second), (int)(width/2-secondStringWidth/2), (int)((height-clockD)/2)-7);
+        g.drawString(df.format(second), (int)(width/2-secondStringWidth/2), (int)((height- clockDiameter)/2)-7);
         g2.rotate(-theta, (int)(width/2)-2, (int)(height/2)-2); //reset rotate angle
 
         // Draw hands
@@ -626,7 +678,7 @@ public class Clock extends JPanel implements Runnable {
         this.setSize(d);
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String... args) throws IOException {
         new Clock();
     }
 
