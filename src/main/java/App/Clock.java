@@ -86,13 +86,12 @@ public class Clock extends JPanel implements Runnable {
     int infoFontSize = 15;
     int subHeadingFontSize = 18;
     int headingFontSize = 20;
-    ImageIcon tick = new ImageIcon("resources/tick2.png");
+    //ImageIcon tick = new ImageIcon("src/main/resources/tick2.png");
+    ImageIcon tick = new ImageIcon(getClass().getResource("/tick2.png"));
 
-    Model model;
+    static Model model;
 
     public Clock() throws IOException {
-
-        model = new Model();
 
         // Schedule a weather update every 10 mins (as per openweathermap requests)
         Timer timer = new Timer("RefreshWeather");
@@ -126,7 +125,6 @@ public class Clock extends JPanel implements Runnable {
 
         JMenuItem weatherMenuItem = new JMenuItem("Weather...");
         onTopMenuItem             = new JMenuItem("Stay on top");
-        onTopMenuItem.setIcon(tick);
         JMenu timeZoneMenu        = new JMenu("TimeZone");
         JMenu dateFormatPopupMenu = new JMenu("Date/Time format");
         JMenuItem aboutMenuItem   = new JMenuItem("About...");
@@ -617,6 +615,10 @@ public class Clock extends JPanel implements Runnable {
         g.fillOval((int)(width/2)-3, (int)(height/2)-3,6,6);
 
 
+    }
+
+    static{
+        model = new Model();
     }
 
     public static void main(String... args) throws IOException {
