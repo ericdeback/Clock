@@ -56,7 +56,7 @@ public class Clock extends JPanel implements Runnable {
 
     // Time variables
     ZonedDateTime zonedDateTime;
-    String timeZoneStr = "Europe/London";
+    String zoneId = "Europe/London";
     double day;
     double hour;
     double hour_12;
@@ -95,7 +95,7 @@ public class Clock extends JPanel implements Runnable {
 
         // Schedule a weather update every 10 mins (as per openweathermap requests)
         Timer timer = new Timer("RefreshWeather");
-        TimerTask task = new TimerTask(){
+        TimerTask task = new TimerTask() {
             @Override
             public void run() {
                 getWeatherUpdate();
@@ -124,31 +124,32 @@ public class Clock extends JPanel implements Runnable {
         mainPopUpMenu = new JPopupMenu();
 
         JMenuItem weatherMenuItem = new JMenuItem("Weather...");
-        onTopMenuItem             = new JMenuItem("Stay on top");
-        JMenu timeZoneMenu        = new JMenu("TimeZone");
+        onTopMenuItem = new JMenuItem("Stay on top");
+        JMenu timeZoneMenu = new JMenu("TimeZone");
         JMenu dateFormatPopupMenu = new JMenu("Date/Time format");
-        JMenuItem aboutMenuItem   = new JMenuItem("About...");
+        JMenuItem aboutMenuItem = new JMenuItem("About...");
 
-        JMenuItem ddMMYYYY        = new JMenuItem("dd MM YYYY");
-        JMenuItem HHmma           = new JMenuItem("HH mm a");
-        JMenuItem DDDddMMM        = new JMenuItem("DDD dd MMM");
-        JMenuItem HHmmssSSS       = new JMenuItem("HH mm ss SSS");
+        JMenuItem ddMMYYYY = new JMenuItem("dd MM YYYY");
+        JMenuItem HHmma = new JMenuItem("HH mm a");
+        JMenuItem DDDddMMM = new JMenuItem("DDD dd MMM");
+        JMenuItem HHmmssSSS = new JMenuItem("HH mm ss SSS");
 
-        ddMMYYYY.addActionListener(e-> {
+        ddMMYYYY.addActionListener(e -> {
             formatString = "dd MMM YYYY";
             delta = model.getDelta(formatString);
         });
-        HHmma.addActionListener(e-> {
+        HHmma.addActionListener(e -> {
             formatString = "HH mm a";
             delta = model.getDelta(formatString);
         });
-        DDDddMMM.addActionListener(e->{
+        DDDddMMM.addActionListener(e -> {
             formatString = "E dd MMM";
             delta = model.getDelta(formatString);
         });
-        HHmmssSSS.addActionListener(e->{
+        HHmmssSSS.addActionListener(e -> {
             formatString = "HH mm ss SSS";
-            delta = model.getDelta(formatString);; // required for SSS update
+            delta = model.getDelta(formatString);
+            ; // required for SSS update
         });
 
         dateFormatPopupMenu.add(ddMMYYYY);
@@ -158,26 +159,32 @@ public class Clock extends JPanel implements Runnable {
 
         // Hard coded list for now
         JMenuItem London = new JMenuItem("Europe/London");
-        JMenuItem Rome   = new JMenuItem("Europe/Rome");
-        JMenuItem newYork    = new JMenuItem("New York");
+        JMenuItem Rome = new JMenuItem("Europe/Rome");
+        JMenuItem newYork = new JMenuItem("New York");
         JMenuItem Sydney = new JMenuItem("Australia/Sydney");
+        JMenuItem Seoul = new JMenuItem("Seoul");
 
         London.addActionListener(e-> {
-            timeZoneStr = "Europe/London";
+            zoneId = "Europe/London";
             getWeatherUpdate();
         });
         Rome.addActionListener(e-> {
-            timeZoneStr = "Europe/Rome";
+            zoneId = "Europe/Rome";
             getWeatherUpdate();
         });
         newYork.addActionListener(e-> {
-            timeZoneStr = "EST";
+            zoneId = "EST";
             getWeatherUpdate();
         });
         Sydney.addActionListener(e-> {
-            timeZoneStr = "Australia/Sydney";
+            zoneId = "Australia/Sydney";
             getWeatherUpdate();
         });
+        Seoul.addActionListener(e-> {
+            zoneId = "Asia/Seoul";
+            getWeatherUpdate();
+        });
+
         aboutMenuItem.addActionListener(e-> {
             JOptionPane.showMessageDialog(this, "Version " + version);
         });
@@ -186,6 +193,7 @@ public class Clock extends JPanel implements Runnable {
         timeZoneMenu.add(London);
         timeZoneMenu.add(Rome);
         timeZoneMenu.add(Sydney);
+        timeZoneMenu.add(Seoul);
 
         weatherMenuItem.addActionListener(e-> {
             if(sideFrame.isVisible()) {
@@ -426,7 +434,7 @@ public class Clock extends JPanel implements Runnable {
         String weatherlocation = "London,uk";
         try {
 
-            switch (timeZoneStr){
+            switch (zoneId){
                 case "Europe/London":
                     weatherlocation = "london,uk";
                     break;
@@ -438,6 +446,9 @@ public class Clock extends JPanel implements Runnable {
                     break;
                 case "Australia/Sydney":
                     weatherlocation = "sydney";
+                    break;
+                case "Asia/Seoul":
+                    weatherlocation = "seoul";
                     break;
             }
 
@@ -493,7 +504,7 @@ public class Clock extends JPanel implements Runnable {
         // add here anything that should be done regularly but not as often as in paintComponent
         while (true) {
 
-            appFrame.setTitle("Timezone: " + timeZoneStr);
+            appFrame.setTitle("Timezone: " + zoneId);
 
             revalidate();
             repaint();
@@ -513,7 +524,7 @@ public class Clock extends JPanel implements Runnable {
 
         // Calculate Date & Time
         Instant nowUtc = Instant.now();
-        ZoneId zoneId = ZoneId.of(timeZoneStr);
+        ZoneId zoneId = ZoneId.of(this.zoneId);
         ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(nowUtc, zoneId);
 
         //zonedDateTime = zonedDateTime.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
