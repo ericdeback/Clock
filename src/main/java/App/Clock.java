@@ -30,7 +30,7 @@ import static java.lang.Integer.*;
 
 public class Clock extends JPanel implements Runnable {
 
-    String version = "1.0.6";
+    String version = "1.0.7";
 
     Graphics2D g2; // used in HourHand/MinuteHand/SecondHand classes
 
@@ -159,26 +159,30 @@ public class Clock extends JPanel implements Runnable {
         // Hard coded list for now
         JMenuItem London = new JMenuItem("Europe/London");
         JMenuItem Rome   = new JMenuItem("Europe/Rome");
-        JMenuItem EST    = new JMenuItem("EST");
+        JMenuItem newYork    = new JMenuItem("New York");
         JMenuItem Sydney = new JMenuItem("Australia/Sydney");
 
         London.addActionListener(e-> {
             timeZoneStr = "Europe/London";
+            getWeatherUpdate();
         });
         Rome.addActionListener(e-> {
             timeZoneStr = "Europe/Rome";
+            getWeatherUpdate();
         });
-        EST.addActionListener(e-> {
+        newYork.addActionListener(e-> {
             timeZoneStr = "EST";
+            getWeatherUpdate();
         });
         Sydney.addActionListener(e-> {
             timeZoneStr = "Australia/Sydney";
+            getWeatherUpdate();
         });
         aboutMenuItem.addActionListener(e-> {
             JOptionPane.showMessageDialog(this, "Version " + version);
         });
 
-        timeZoneMenu.add(EST);
+        timeZoneMenu.add(newYork);
         timeZoneMenu.add(London);
         timeZoneMenu.add(Rome);
         timeZoneMenu.add(Sydney);
@@ -419,30 +423,38 @@ public class Clock extends JPanel implements Runnable {
     void getWeatherUpdate() {
 
         //System.out.println("Getting weather update");
-
+        String weatherlocation = "London,uk";
         try {
 
-            //switch ()
-            String location = "London,uk";
+            switch (timeZoneStr){
+                case "Europe/London":
+                    weatherlocation = "london,uk";
+                    break;
+                case "Europe/Rome":
+                    weatherlocation = "rome";
+                    break;
+                case "EST":
+                    weatherlocation = "newyork";
+                    break;
+                case "Australia/Sydney":
+                    weatherlocation = "sydney";
+                    break;
+            }
 
-            JSONObject json_weather      = model.getJson_weather(location);
-            JSONArray  weatherdetails    = model.getWeatherdetails();
-            JSONObject weatherobj        = model.getWeatherobj();
-            String     weathericoncode   = model.getWeathericoncode();
+            model.setLocation(weatherlocation);
+            model.getJson_weather();
+            model.getWeatherdetails();
+            model.getWeatherobj();
+            model.getWeathericoncode();
 
-/*            //for testing
-            String[] weathercodes ={"01d", "02d", "03d"};
-            Random r = new Random();
-            weathericoncode = weathercodes[r.nextInt(3)];*/
-
-            weatherImage                = model.getWeatherImage();
-
+            weatherImage       = model.getWeatherImage();
             weatherDescription = model.getWeatherDescription();
             weatherIconLabel.setIcon(new ImageIcon(weatherImage));
             weatherIconLabel.setToolTipText(weatherDescription);
 
             // extract temperature data
-            JSONObject tempobj = model.getMainobj();
+            model.getMainObj();
+
             temp        = model.getTemp();
             feels_like  = model.getFeels_like();
             temp_min    = model.getTemp_min();
@@ -454,14 +466,14 @@ public class Clock extends JPanel implements Runnable {
             tempmaxLabel.setText(temp_max+"C");
 
             // extract wind data
-            JSONObject windobj = model.getWindobj();
+            JSONObject windobj = model.getWindObj();
             try {
                 wind_speed = windobj.get("speed").toString()+ "m/s";
             } catch (Exception ex) {
                 wind_speed = "N/A";
             }
             try {
-                wind_direction = model.getCompassHeading(tempobj.get("deg").toString());
+                wind_direction = model.getCompassHeading(windobj.get("deg").toString());
             } catch (Exception ex) {
                 wind_direction = "N/A";
             }
@@ -500,7 +512,11 @@ public class Clock extends JPanel implements Runnable {
         g2 = (Graphics2D)g;
 
         // Calculate Date & Time
-        zonedDateTime = zonedDateTime.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
+        Instant nowUtc = Instant.now();
+        ZoneId zoneId = ZoneId.of(timeZoneStr);
+        ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(nowUtc, zoneId);
+
+        //zonedDateTime = zonedDateTime.now(TimeZone.getTimeZone(timeZoneStr).toZoneId());
         Date date = new Date();
         //SimpleDateFormat fmt = new SimpleDateFormat(formatString);
         DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern(formatString);

@@ -39,24 +39,44 @@ enum Heading {
     }
 }
 
+enum TimeZone{
+     Europe_London("Europe/London"),
+     Europe_Rome("Europe/Rome"),
+     EST("EST"),
+     Australia_Sydney("Australia/Sydney");
+
+     public final String ZoneId;
+
+     private TimeZone(String ZoneId) {
+         this.ZoneId = ZoneId;
+     }
+
+}
 public class Model {
 
 
     // Weather vars
     final private String APPID = "b2a8bc257fa01634206954930e5a6301"; // provided by OpenWeatherMap
-    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q={LOCATION}&APPID="+APPID+"&units=metric";;
+
+    String weatherURL = "http://api.openweathermap.org/data/2.5/weather?q={LOCATION}&APPID={APPID}&units=metric".replace("{APPID}", APPID);
 
     long freq = 10*60*1000L;
     int delta = 1000; // update interval [ms]
 
     JSONObject json_weather;
-    JSONObject tempobj;
+    JSONObject tempObj;
+    JSONObject windObj;
+    JSONObject mainObj;
     JSONArray  weatherdetails;
     JSONObject weatherobj;
     String     weathericoncode;
+    String     location;
 
+    public void setLocation(String location) {
+        this.location = location;
+    }
 
-    public JSONObject getJson_weather(String location) throws IOException {
+    public JSONObject getJson_weather() throws IOException {
         json_weather = new JSONObject(IOUtils.toString(new URL(getWeatherURL(location)), Charset.forName("UTF-8")));
         return json_weather;
     }
@@ -73,18 +93,17 @@ public class Model {
 
     public String getWeathericoncode() {
         weathericoncode = weatherobj.get("icon").toString();
-
         return weathericoncode;
     }
 
-    public JSONObject getMainobj() {
-        tempobj =(JSONObject)json_weather.get("main");
-        return tempobj;
+    public JSONObject getMainObj() {
+        mainObj =(JSONObject)json_weather.get("main");
+        return mainObj;
     }
 
-    public JSONObject getWindobj() {
-        tempobj =(JSONObject)json_weather.get("wind");
-        return tempobj;
+    public JSONObject getWindObj() {
+        windObj =(JSONObject)json_weather.get("wind");
+        return windObj;
     }
 
     public int getDelta(String formatString) {
@@ -126,19 +145,19 @@ public class Model {
     }
 
     public String getTemp() {
-        return tempobj.get("temp").toString();
+        return mainObj.get("temp").toString();
     }
 
     public String getFeels_like() {
-        return tempobj.get("feels_like").toString();
+        return mainObj.get("feels_like").toString();
     }
 
     public String getTemp_min() {
-        return tempobj.get("temp_min").toString();
+        return mainObj.get("temp_min").toString();
     }
 
     public String getTemp_max() {
-        return  tempobj.get("temp_max").toString();
+        return  mainObj.get("temp_max").toString();
     }
 
     public long getFreq() {
