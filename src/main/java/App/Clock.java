@@ -29,7 +29,7 @@ import static java.lang.Integer.*;
 
 public class Clock extends JPanel implements Runnable {
 
-    String version = "1.0.7";
+    String version = "1.0.8";
 
     Graphics2D g2; // used in HourHand/MinuteHand/SecondHand classes
 
