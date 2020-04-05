@@ -10,8 +10,7 @@ package App;
  */
 
 //TODO
-// 1. Fix: when converting to new timezone, the date did not update
-// 2. convert timezones to enums
+// 1. convert timezones to enums
 
 import org.json.*;
 
@@ -22,8 +21,8 @@ import java.io.*;
 import java.text.*;
 import java.time.*;
 import java.time.format.*;
-import java.util.Timer;
 import java.util.*;
+import java.util.Timer;
 
 import static java.lang.Integer.*;
 
@@ -91,19 +90,11 @@ public class Clock extends JPanel implements Runnable {
 
     static Model model;
 
+    // schedule weather updates
+    Timer timer = new Timer("RefreshWeather");
+    TimerTask weatherUpdateTask;
+
     public Clock() throws IOException {
-
-        // Schedule a weather update every 10 mins (as per openweathermap requests)
-        Timer timer = new Timer("RefreshWeather");
-        TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-                getWeatherUpdate();
-            }
-        };
-
-        long freq = model.getFreq(); // 10min intervals tp poll openweathermap
-        timer.schedule(task, 0L, freq);
 
         secondhand = new Secondhand(this);
         minutehand = new Minutehand(this);
@@ -198,7 +189,21 @@ public class Clock extends JPanel implements Runnable {
         weatherMenuItem.addActionListener(e-> {
             if(sideFrame.isVisible()) {
                 sideFrame.setVisible(false);
+                weatherUpdateTask.cancel();
+
             } else {
+
+                // Schedule a weather update every 10 mins (as per openweathermap requests)
+                weatherUpdateTask = new TimerTask() {
+                    @Override
+                    public void run() {
+                        getWeatherUpdate();
+                    }
+                };
+
+                long freq = model.getFreq(); // 10min intervals tp poll openweathermap
+                timer.schedule(weatherUpdateTask, 0L, freq);
+
                 int x_position =0;
 
                 if (appFrame.getX() + appFrame.getWidth() + sideFrameWidth < Toolkit.getDefaultToolkit().getScreenSize().width) {
