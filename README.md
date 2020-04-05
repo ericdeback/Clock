@@ -12,7 +12,7 @@ Ctrl-click or right-click exposes a context menu:
     
     DateFormat: dd MM YYYY, HH mm a, DDD dd MMM, HH mm ss SSS
     
-    TimeZone: EST, GMT, CET & Australia/Sydney
+    TimeZone: EST, GMT, CET, Australia/Sydney & Seoul
   
     About;
 
